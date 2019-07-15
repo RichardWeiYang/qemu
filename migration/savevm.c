@@ -1834,7 +1834,6 @@ static void *postcopy_ram_listen_thread(void *opaque)
     qemu_loadvm_state_cleanup();
 
     rcu_unregister_thread();
-    mis->have_listen_thread = false;
     postcopy_state_set(POSTCOPY_INCOMING_END, NULL);
 
     return NULL;
@@ -1878,7 +1877,6 @@ static int loadvm_postcopy_handle_listen(MigrationIncomingState *mis)
         return -1;
     }
 
-    mis->have_listen_thread = true;
     /* Start up the listening thread and wait for it to signal ready */
     qemu_sem_init(&mis->listen_thread_sem, 0);
     qemu_thread_create(&mis->listen_thread, "postcopy/listen",
@@ -2516,7 +2514,7 @@ int qemu_loadvm_state(QEMUFile *f)
 
     trace_qemu_loadvm_state_post_main(ret);
 
-    if (mis->have_listen_thread) {
+    if (ram_postcopy_is_running()) {
         /* Listen thread still going, can't clean up yet */
         return ret;
     }

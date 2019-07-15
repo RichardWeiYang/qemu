@@ -63,7 +63,6 @@ struct MigrationIncomingState {
     /* Set this when we want the fault thread to quit */
     bool           fault_thread_quit;
 
-    bool           have_listen_thread;
     QemuThread     listen_thread;
     QemuSemaphore  listen_thread_sem;
 
