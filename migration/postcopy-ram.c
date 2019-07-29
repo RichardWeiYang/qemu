@@ -1253,8 +1253,7 @@ int postcopy_place_page_zero(MigrationIncomingState *mis, void *host,
             }
             memset(mis->postcopy_tmp_zero_page, '\0', mis->largest_page_size);
         }
-        return postcopy_place_page(mis, host, mis->postcopy_tmp_zero_page,
-                                   rb);
+        return postcopy_place_page(mis, host, mis->postcopy_tmp_zero_page, rb);
     }
 }
 

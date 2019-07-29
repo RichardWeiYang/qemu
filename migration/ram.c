@@ -2482,16 +2482,6 @@ static bool save_page_use_compression(RAMState *rs)
     }
 
     /*
-     * The decompression threads asynchronously write into RAM
-     * rather than use the atomic copies needed to avoid
-     * userfaulting.  It should be possible to fix the decompression
-     * threads for compatibility in future.
-     */
-    if (migration_in_postcopy()) {
-        return false;
-    }
-
-    /*
      * If xbzrle is on, stop using the data compression after first
      * round of migration even if compression is enabled. In theory,
      * xbzrle can do better than compression.
@@ -3483,6 +3473,11 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
         }
         i++;
     }
+
+    if (migrate_postcopy_ram()) {
+        flush_compressed_data(rs);
+    }
+
     rcu_read_unlock();
 
     /*
@@ -4069,6 +4064,7 @@ static int ram_load_postcopy(QEMUFile *f)
         void *place_source = NULL;
         RAMBlock *block = NULL;
         uint8_t ch;
+        int len;
 
         addr = qemu_get_be64(f);
 
@@ -4086,7 +4082,8 @@ static int ram_load_postcopy(QEMUFile *f)
 
         trace_ram_load_postcopy_loop((uint64_t)addr, flags);
         place_needed = false;
-        if (flags & (RAM_SAVE_FLAG_ZERO | RAM_SAVE_FLAG_PAGE)) {
+        if (flags & (RAM_SAVE_FLAG_ZERO | RAM_SAVE_FLAG_PAGE |
+                     RAM_SAVE_FLAG_COMPRESS_PAGE)) {
             block = ram_block_from_stream(f, flags);
 
             host = host_from_ram_block_offset(block, addr);
@@ -4159,6 +4156,17 @@ static int ram_load_postcopy(QEMUFile *f)
                                          TARGET_PAGE_SIZE);
             }
             break;
+        case RAM_SAVE_FLAG_COMPRESS_PAGE:
+            all_zero = false;
+            len = qemu_get_be32(f);
+            if (len < 0 || len > compressBound(TARGET_PAGE_SIZE)) {
+                error_report("Invalid compressed data length: %d", len);
+                ret = -EINVAL;
+                break;
+            }
+            decompress_data_with_multi_threads(f, page_buffer, len);
+            ret |= wait_for_decompress_done();
+            break;
         case RAM_SAVE_FLAG_EOS:
             /* normal exit */
             multifd_recv_sync_main();
@@ -4180,8 +4188,7 @@ static int ram_load_postcopy(QEMUFile *f)
             void *place_dest = host + TARGET_PAGE_SIZE - block->page_size;
 
             if (all_zero) {
-                ret = postcopy_place_page_zero(mis, place_dest,
-                                               block);
+                ret = postcopy_place_page_zero(mis, place_dest, block);
             } else {
                 ret = postcopy_place_page(mis, place_dest,
                                           place_source, block);
@@ -4416,6 +4423,7 @@ static int ram_load_precopy(QEMUFile *f)
         }
     }
 
+    ret |= wait_for_decompress_done();
     return ret;
 }
 
@@ -4449,7 +4457,6 @@ static int ram_load(QEMUFile *f, void *opaque, int version_id)
         ret = ram_load_precopy(f);
     }
 
-    ret |= wait_for_decompress_done();
     rcu_read_unlock();
     trace_ram_load_complete(ret, seq_iter);
 
