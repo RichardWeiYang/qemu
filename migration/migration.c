@@ -2951,8 +2951,8 @@ static MigThrError postcopy_pause(MigrationState *s)
         qemu_file_shutdown(file);
         qemu_fclose(file);
 
-        error_report("Detected IO failure for postcopy. "
-                     "Migration paused.");
+        error_report("%s: Detected IO failure for postcopy. "
+                     "Migration paused.", __func__);
 
         /*
          * We wait until things fixed up. Then someone will setup the

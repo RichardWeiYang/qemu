@@ -2407,8 +2407,8 @@ static bool postcopy_pause_incoming(MigrationIncomingState *mis)
     /* Notify the fault thread for the invalidated file handle */
     postcopy_fault_thread_notify(mis);
 
-    error_report("Detected IO failure for postcopy. "
-                 "Migration paused.");
+    error_report("%s: Detected IO failure for postcopy. "
+                 "Migration paused.", __func__);
 
     while (mis->state == MIGRATION_STATUS_POSTCOPY_PAUSED) {
         qemu_sem_wait(&mis->postcopy_pause_sem_dst);
