@@ -1437,7 +1437,7 @@ void qmp_migrate_start_postcopy(Error **errp)
      * we don't error if migration has finished since that would be racy
      * with issuing this command.
      */
-    atomic_set(&s->start_postcopy, true);
+    atomic_set(&s->prep_postcopy, true);
 }
 
 /* shared migration helpers */

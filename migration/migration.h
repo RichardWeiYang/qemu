@@ -195,6 +195,7 @@ struct MigrationState
     bool vm_was_running;
 
     /* Flag set once the migration has been asked to enter postcopy */
+    bool prep_postcopy;
     bool start_postcopy;
     /* Flag set after postcopy has sent the device state */
     bool postcopy_after_devices;

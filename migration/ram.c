@@ -3411,6 +3411,7 @@ static int ram_save_setup(QEMUFile *f, void *opaque)
  */
 static int ram_save_iterate(QEMUFile *f, void *opaque)
 {
+    MigrationState *s = migrate_get_current();
     RAMState **temp = opaque;
     RAMState *rs = *temp;
     int ret;
@@ -3474,8 +3475,9 @@ static int ram_save_iterate(QEMUFile *f, void *opaque)
         i++;
     }
 
-    if (migrate_postcopy_ram()) {
+    if (atomic_read(&s->prep_postcopy)) {
         flush_compressed_data(rs);
+        atomic_set(&s->start_postcopy, true);
     }
 
     rcu_read_unlock();
